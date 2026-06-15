@@ -8,6 +8,7 @@ import {
   DispatchResult,
   PlayerProfile,
   AllStats,
+  StampCandyCount,
 } from '@/types';
 import {
   createInitialBoard,
@@ -20,14 +21,15 @@ import {
   applyGravity,
   fillEmptySpaces,
   placeSpecialCandies,
-  countClearedCandies,
+  countClearedCandiesWithStamps,
   calculateScore,
   checkSwapHasSpecial,
   triggerSpecialCandy,
 } from '@/engine/matchEngine';
-import { loadCandiesToTrain, clearTrain } from '@/engine/loadingSystem';
+import { loadCandiesToTrainWithStamps, clearTrain } from '@/engine/loadingSystem';
 import { calculateDispatchResult } from '@/engine/dispatchSystem';
 import { generateOrder } from '@/engine/contractSystem';
+import { updateStampOnDispatch } from '@/engine/stampSystem';
 import {
   loadProfile,
   saveProfile,
@@ -56,6 +58,7 @@ interface GameStore {
   profile: PlayerProfile;
   stats: AllStats;
   showStats: boolean;
+  lastStampCandyInfo: Record<string, StampCandyCount>;
 
   selectCandy: (pos: Position) => void;
   processSwap: (pos1: Position, pos2: Position) => void;
@@ -75,7 +78,7 @@ const useGameStore = create<GameStore>((set, get) => {
   const persisted = loadGameState(initialProfile);
 
   return {
-    board: persisted?.board || createInitialBoard(),
+    board: persisted?.board || createInitialBoard(initialProfile.stationStamps),
     selectedCandy: null,
     score: persisted?.score ?? 0,
     moves: persisted?.moves ?? GAME_CONFIG.INITIAL_MOVES,
@@ -90,6 +93,7 @@ const useGameStore = create<GameStore>((set, get) => {
     profile: initialProfile,
     stats: initialStats,
     showStats: false,
+    lastStampCandyInfo: {},
 
     persist: () => {
       const s = get();
@@ -215,7 +219,8 @@ const useGameStore = create<GameStore>((set, get) => {
             currentBoard = removeMatched(currentBoard);
             currentBoard = placeSpecialCandies(currentBoard, matches);
             currentBoard = applyGravity(currentBoard);
-            currentBoard = fillEmptySpaces(currentBoard);
+            const stationStamps = get().profile.stationStamps;
+            currentBoard = fillEmptySpaces(currentBoard, stationStamps);
 
             for (let r = 0; r < currentBoard.length; r++) {
               for (let c = 0; c < currentBoard[r].length; c++) {
@@ -239,8 +244,14 @@ const useGameStore = create<GameStore>((set, get) => {
           round++;
         }
 
-        const candyCounts = countClearedCandies(allMatches);
-        const { train: newTrain } = loadCandiesToTrain(get().train, candyCounts);
+        const { candyCounts, stampCandyInfo } = countClearedCandiesWithStamps(allMatches);
+        const currentStationId = get().currentStationId;
+        const { train: newTrain } = loadCandiesToTrainWithStamps(
+          get().train,
+          candyCounts,
+          stampCandyInfo,
+          currentStationId
+        );
 
         const newMaxCombo = Math.max(get().maxCombo, totalCombo);
 
@@ -250,6 +261,7 @@ const useGameStore = create<GameStore>((set, get) => {
           combo: totalCombo,
           maxCombo: newMaxCombo,
           isAnimating: false,
+          lastStampCandyInfo: stampCandyInfo,
         }));
 
         get().persist();
@@ -264,11 +276,22 @@ const useGameStore = create<GameStore>((set, get) => {
     },
 
     dispatchTrain: () => {
-      const { train, currentOrder, profile, gamePhase, moves, maxCombo } = get();
+      const { train, currentOrder, profile, gamePhase, moves, maxCombo, lastStampCandyInfo } = get();
 
       if (gamePhase !== 'playing' || !currentOrder) return;
 
-      const result = calculateDispatchResult(train, currentOrder);
+      const result = calculateDispatchResult(
+        train,
+        currentOrder,
+        profile.stationStamps,
+        lastStampCandyInfo
+      );
+
+      const newStationStamps = updateStampOnDispatch(
+        profile.stationStamps,
+        currentOrder.stationId,
+        result.success
+      );
 
       let newCoins = profile.coins + result.reward - result.penalty;
       newCoins = Math.max(0, newCoins);
@@ -283,6 +306,7 @@ const useGameStore = create<GameStore>((set, get) => {
         reputation: newReputation,
         unlockedStations: newUnlocked,
         level: Math.floor(newReputation / 100) + 1,
+        stationStamps: newStationStamps,
       };
 
       saveProfile(newProfile);
@@ -304,6 +328,7 @@ const useGameStore = create<GameStore>((set, get) => {
         dispatchResult: result,
         profile: newProfile,
         stats: loadStats(),
+        lastStampCandyInfo: {},
       });
 
       clearGameState();
@@ -318,11 +343,12 @@ const useGameStore = create<GameStore>((set, get) => {
         currentOrder: newOrder,
         gamePhase: 'playing',
         dispatchResult: null,
-        board: createInitialBoard(),
+        board: createInitialBoard(profile.stationStamps),
         score: 0,
         moves: GAME_CONFIG.INITIAL_MOVES,
         combo: 0,
         maxCombo: 0,
+        lastStampCandyInfo: {},
       }));
 
       get().persist();
@@ -334,7 +360,7 @@ const useGameStore = create<GameStore>((set, get) => {
       const order = generateOrder(stationId, profile.reputation);
 
       set({
-        board: createInitialBoard(),
+        board: createInitialBoard(profile.stationStamps),
         selectedCandy: null,
         score: 0,
         moves: GAME_CONFIG.INITIAL_MOVES,
@@ -348,6 +374,7 @@ const useGameStore = create<GameStore>((set, get) => {
         dispatchResult: null,
         profile,
         stats: loadStats(),
+        lastStampCandyInfo: {},
       });
 
       clearGameState();

@@ -1,5 +1,6 @@
-import { Candy, Position, MatchResult, CandyType, SpecialCandyType, BOARD_SIZE, BASIC_CANDY_TYPES } from '@/types';
+import { Candy, Position, MatchResult, CandyType, SpecialCandyType, BOARD_SIZE, BASIC_CANDY_TYPES, StampCandyCount, StationStampData } from '@/types';
 import { GAME_CONFIG } from '@/data/config';
+import { getStampStationForSpawn } from './stampSystem';
 
 function generateId(): string {
   return Math.random().toString(36).substring(2, 9);
@@ -9,7 +10,7 @@ function getRandomCandyType(): CandyType {
   return BASIC_CANDY_TYPES[Math.floor(Math.random() * BASIC_CANDY_TYPES.length)];
 }
 
-export function createCandy(row: number, col: number, type?: CandyType): Candy {
+export function createCandy(row: number, col: number, type?: CandyType, stampStationId?: string | null): Candy {
   return {
     id: generateId(),
     type: type || getRandomCandyType(),
@@ -17,12 +18,13 @@ export function createCandy(row: number, col: number, type?: CandyType): Candy {
     col,
     isSpecial: false,
     specialType: null,
+    stampStationId: stampStationId ?? null,
     isMatched: false,
     isFalling: false,
   };
 }
 
-export function createSpecialCandy(row: number, col: number, specialType: SpecialCandyType): Candy {
+export function createSpecialCandy(row: number, col: number, specialType: SpecialCandyType, stampStationId?: string | null): Candy {
   let type: CandyType = 'strawberry';
   if (specialType === 'rainbow') type = 'rainbow';
   if (specialType === 'bomb') type = 'bomb';
@@ -34,20 +36,23 @@ export function createSpecialCandy(row: number, col: number, specialType: Specia
     col,
     isSpecial: true,
     specialType,
+    stampStationId: stampStationId ?? null,
     isMatched: false,
     isFalling: false,
   };
 }
 
-export function createInitialBoard(): (Candy | null)[][] {
+export function createInitialBoard(stationStamps?: Record<string, StationStampData>): (Candy | null)[][] {
   const board: (Candy | null)[][] = [];
 
   for (let row = 0; row < BOARD_SIZE; row++) {
     board[row] = [];
     for (let col = 0; col < BOARD_SIZE; col++) {
-      let candy = createCandy(row, col);
+      const stampStation = stationStamps ? getStampStationForSpawn(stationStamps) : null;
+      let candy = createCandy(row, col, undefined, stampStation);
       while (hasInitialMatch(board, candy, row, col)) {
-        candy = createCandy(row, col);
+        const retryStamp = stationStamps ? getStampStationForSpawn(stationStamps) : null;
+        candy = createCandy(row, col, undefined, retryStamp);
       }
       board[row][col] = candy;
     }
@@ -494,13 +499,14 @@ export function applyGravity(board: (Candy | null)[][]): (Candy | null)[][] {
   return newBoard;
 }
 
-export function fillEmptySpaces(board: (Candy | null)[][]): (Candy | null)[][] {
+export function fillEmptySpaces(board: (Candy | null)[][], stationStamps?: Record<string, StationStampData>): (Candy | null)[][] {
   const newBoard = board.map(row => [...row]);
 
   for (let col = 0; col < BOARD_SIZE; col++) {
     for (let row = 0; row < BOARD_SIZE; row++) {
       if (newBoard[row][col] === null) {
-        newBoard[row][col] = createCandy(row, col);
+        const stampStation = stationStamps ? getStampStationForSpawn(stationStamps) : null;
+        newBoard[row][col] = createCandy(row, col, undefined, stampStation);
         newBoard[row][col]!.isFalling = true;
       }
     }
@@ -547,6 +553,36 @@ export function countClearedCandies(matches: MatchResult[]): Record<CandyType, n
   }
 
   return counts as Record<CandyType, number>;
+}
+
+export function countClearedCandiesWithStamps(matches: MatchResult[]): {
+  candyCounts: Record<CandyType, number>;
+  stampCandyInfo: Record<CandyType, StampCandyCount>;
+} {
+  const candyCounts: Record<string, number> = {};
+  const stampCandyInfo: Record<string, StampCandyCount> = {};
+
+  for (const match of matches) {
+    for (const candy of match.candies) {
+      if (!candy.isSpecial) {
+        candyCounts[candy.type] = (candyCounts[candy.type] || 0) + 1;
+
+        if (candy.stampStationId) {
+          if (!stampCandyInfo[candy.type]) {
+            stampCandyInfo[candy.type] = { totalCount: 0, stampCandyCounts: {} };
+          }
+          stampCandyInfo[candy.type].totalCount += 1;
+          stampCandyInfo[candy.type].stampCandyCounts[candy.stampStationId] =
+            (stampCandyInfo[candy.type].stampCandyCounts[candy.stampStationId] || 0) + 1;
+        }
+      }
+    }
+  }
+
+  return {
+    candyCounts: candyCounts as Record<CandyType, number>,
+    stampCandyInfo: stampCandyInfo as Record<CandyType, StampCandyCount>,
+  };
 }
 
 export function calculateScore(matches: MatchResult[], combo: number): number {

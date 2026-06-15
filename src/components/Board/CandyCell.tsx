@@ -1,5 +1,5 @@
 import { Candy } from '@/types';
-import { CANDY_CONFIG } from '@/data/config';
+import { CANDY_CONFIG, STATIONS } from '@/data/config';
 import { cn } from '@/lib/utils';
 
 interface CandyCellProps {
@@ -17,6 +17,9 @@ export default function CandyCell({ candy, isSelected, onClick }: CandyCellProps
 
   const config = CANDY_CONFIG[candy.type];
   const isSpecial = candy.isSpecial;
+  const stampStation = candy.stampStationId
+    ? STATIONS.find(s => s.id === candy.stampStationId)
+    : null;
 
   return (
     <button
@@ -41,6 +44,15 @@ export default function CandyCell({ candy, isSelected, onClick }: CandyCellProps
       }}
     >
       <span className="drop-shadow-md">{config.emoji}</span>
+      {stampStation && (
+        <span
+          className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 rounded-full flex items-center justify-center text-[8px] sm:text-[10px] font-bold text-white shadow-sm border border-white"
+          style={{ backgroundColor: stampStation.themeColor }}
+          title={stampStation.name + '印章'}
+        >
+          📮
+        </span>
+      )}
     </button>
   );
 }

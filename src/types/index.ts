@@ -16,6 +16,7 @@ export interface Candy {
   col: number;
   isSpecial: boolean;
   specialType: SpecialCandyType;
+  stampStationId: string | null;
   isMatched: boolean;
   isFalling: boolean;
 }
@@ -70,6 +71,11 @@ export interface Station {
   description: string;
 }
 
+export interface StationStampData {
+  consecutiveCompletions: number;
+  stampCount: number;
+}
+
 export interface PlayerProfile {
   id: string;
   name: string;
@@ -77,6 +83,7 @@ export interface PlayerProfile {
   reputation: number;
   level: number;
   unlockedStations: string[];
+  stationStamps: Record<string, StationStampData>;
 }
 
 export interface GameState {
@@ -102,6 +109,20 @@ export interface DispatchResult {
   mismatches: OrderItem[];
   correctItems: OrderItem[];
   reputationChange: number;
+  loyaltyBonus: LoyaltyBonusResult | null;
+}
+
+export interface LoyaltyBonusResult {
+  stationId: string;
+  stationName: string;
+  stampCount: number;
+  bonusReward: number;
+  bonusReputation: number;
+}
+
+export interface StampCandyCount {
+  totalCount: number;
+  stampCandyCounts: Record<string, number>;
 }
 
 export interface StatsStep {

@@ -87,6 +87,7 @@ const DEFAULT_PROFILE: PlayerProfile = {
   reputation: 0,
   level: 1,
   unlockedStations: ['candy-town'],
+  stationStamps: {},
 };
 
 const DEFAULT_STATS: AllStats = {
@@ -117,7 +118,11 @@ export function loadProfile(): PlayerProfile {
   try {
     const data = localStorage.getItem(STORAGE_KEYS.PROFILE);
     if (data) {
-      return JSON.parse(data);
+      const parsed = JSON.parse(data) as PlayerProfile;
+      return {
+        ...parsed,
+        stationStamps: parsed.stationStamps || {},
+      };
     }
   } catch (e) {
     console.error('Failed to load profile:', e);

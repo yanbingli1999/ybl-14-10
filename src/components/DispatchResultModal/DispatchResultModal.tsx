@@ -7,7 +7,7 @@ export default function DispatchResultModal() {
 
   if (gamePhase !== 'result' || !dispatchResult || !currentOrder) return null;
 
-  const { success, matchRate, reward, penalty, mismatches, correctItems, reputationChange } =
+  const { success, matchRate, reward, penalty, mismatches, correctItems, reputationChange, loyaltyBonus } =
     dispatchResult;
 
   return (
@@ -103,6 +103,25 @@ export default function DispatchResultModal() {
                     差{item.quantity}个
                   </span>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {loyaltyBonus && (
+            <div className="mb-4 p-3 bg-purple-50 rounded-xl border border-purple-200">
+              <h4 className="text-sm font-semibold text-purple-700 mb-2 flex items-center gap-1">
+                🏅 忠诚奖励 — {loyaltyBonus.stationName}
+              </h4>
+              <div className="flex items-center gap-3 text-sm">
+                <span className="text-purple-600">
+                  📮 ×{loyaltyBonus.stampCount} 印章糖
+                </span>
+                <span className="text-yellow-600 font-bold">
+                  +{loyaltyBonus.bonusReward} 金币
+                </span>
+                <span className="text-purple-600 font-bold">
+                  +{loyaltyBonus.bonusReputation} 信誉
+                </span>
               </div>
             </div>
           )}

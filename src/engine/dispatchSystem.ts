@@ -1,10 +1,13 @@
-import { Train, StationOrder, DispatchResult, OrderItem, CandyType } from '@/types';
+import { Train, StationOrder, DispatchResult, OrderItem, CandyType, StationStampData, StampCandyCount, LoyaltyBonusResult } from '@/types';
 import { GAME_CONFIG } from '@/data/config';
 import { getCandyLoad } from './loadingSystem';
+import { checkLoyaltyBonus } from './stampSystem';
 
 export function calculateDispatchResult(
   train: Train,
-  order: StationOrder
+  order: StationOrder,
+  stationStamps?: Record<string, StationStampData>,
+  stampCandyInfo?: Record<CandyType, StampCandyCount>
 ): DispatchResult {
   const correctItems: OrderItem[] = [];
   const mismatches: OrderItem[] = [];
@@ -51,9 +54,18 @@ export function calculateDispatchResult(
     penalty = Math.min(penalty, order.penalty);
   }
 
-  const reputationChange = success
+  let reputationChange = success
     ? GAME_CONFIG.REPUTATION_PER_SUCCESS
     : GAME_CONFIG.REPUTATION_PER_FAIL;
+
+  let loyaltyBonus: LoyaltyBonusResult | null = null;
+  if (stationStamps && stampCandyInfo && success) {
+    loyaltyBonus = checkLoyaltyBonus(stationStamps, stampCandyInfo, order.stationId);
+    if (loyaltyBonus) {
+      reward += loyaltyBonus.bonusReward;
+      reputationChange += loyaltyBonus.bonusReputation;
+    }
+  }
 
   return {
     success,
@@ -63,6 +75,7 @@ export function calculateDispatchResult(
     mismatches,
     correctItems,
     reputationChange,
+    loyaltyBonus,
   };
 }
 

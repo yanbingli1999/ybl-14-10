@@ -1,5 +1,6 @@
-import { Train, Carriage, CandyType } from '@/types';
+import { Train, Carriage, CandyType, StampCandyCount } from '@/types';
 import { GAME_CONFIG } from '@/data/config';
+import { calculateStampCandyCounts } from './stampSystem';
 
 export function loadCandiesToTrain(train: Train, candyCounts: Record<CandyType, number>): {
   train: Train;
@@ -69,4 +70,18 @@ export function clearTrain(train: Train): Train {
 export function getCandyLoad(train: Train, candyType: CandyType): number {
   const carriage = train.carriages.find(c => c.candyType === candyType);
   return carriage?.currentLoad || 0;
+}
+
+export function loadCandiesToTrainWithStamps(
+  train: Train,
+  candyCounts: Record<CandyType, number>,
+  stampCandyInfo: Record<CandyType, StampCandyCount>,
+  currentStationId: string
+): {
+  train: Train;
+  overflow: Record<CandyType, number>;
+  totalLoaded: number;
+} {
+  const adjustedCounts = calculateStampCandyCounts(candyCounts, stampCandyInfo, currentStationId);
+  return loadCandiesToTrain(train, adjustedCounts);
 }

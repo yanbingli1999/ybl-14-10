@@ -1,7 +1,8 @@
 import useGameStore from '@/store/useGameStore';
-import { CANDY_CONFIG, STATIONS } from '@/data/config';
+import { CANDY_CONFIG, STATIONS, GAME_CONFIG } from '@/data/config';
 import { getCandyLoad } from '@/engine/loadingSystem';
-import { MapPin, Flame, Coins, AlertTriangle } from 'lucide-react';
+import { getStationStampProgress } from '@/engine/stampSystem';
+import { MapPin, Flame, Coins, AlertTriangle, Stamp, Award } from 'lucide-react';
 
 export default function StationOrderPanel() {
   const { currentOrder, train, currentStationId, profile, changeStation } = useGameStore();
@@ -109,6 +110,50 @@ export default function StationOrderPanel() {
           </div>
         </div>
       )}
+
+      <div className="mt-4 pt-3 border-t border-gray-200">
+        <div className="flex items-center gap-2 mb-2">
+          <Stamp className="w-4 h-4 text-amber-600" />
+          <h4 className="text-xs font-semibold text-gray-500">站台印章</h4>
+        </div>
+        {(() => {
+          const stampProgress = getStationStampProgress(profile.stationStamps, currentStationId);
+          const progressPercent = Math.min((stampProgress.consecutive / stampProgress.required) * 100, 100);
+          return (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-gray-600">
+                  连续完成: {stampProgress.consecutive}/{stampProgress.required}
+                </span>
+                <span className="text-amber-600 font-bold">
+                  📮 ×{stampProgress.stampCount}
+                </span>
+              </div>
+              <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: `${progressPercent}%`,
+                    backgroundColor: station?.themeColor || '#F59E0B',
+                  }}
+                />
+              </div>
+              {stampProgress.stampCount > 0 && (
+                <div className="flex items-center gap-1 text-xs text-amber-600">
+                  <Award className="w-3 h-3" />
+                  <span>印章糖优先服务本站订单，送错车站算普通糖</span>
+                </div>
+              )}
+              {stampProgress.stampCount >= GAME_CONFIG.LOYALTY_BONUS_THRESHOLD && (
+                <div className="flex items-center gap-1 text-xs text-purple-600 font-medium">
+                  <Award className="w-3 h-3" />
+                  <span>集齐{GAME_CONFIG.LOYALTY_BONUS_THRESHOLD}枚同站印章糖可触发忠诚奖励！</span>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+      </div>
     </div>
   );
 }

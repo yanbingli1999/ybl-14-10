@@ -93,7 +93,7 @@ const useGameStore = create<GameStore>((set, get) => {
     profile: initialProfile,
     stats: initialStats,
     showStats: false,
-    lastStampCandyInfo: {},
+    lastStampCandyInfo: persisted?.lastStampCandyInfo || {},
 
     persist: () => {
       const s = get();
@@ -108,6 +108,7 @@ const useGameStore = create<GameStore>((set, get) => {
         maxCombo: s.maxCombo,
         gamePhase: s.gamePhase,
         dispatchResult: s.dispatchResult,
+        lastStampCandyInfo: s.lastStampCandyInfo,
       });
     },
 

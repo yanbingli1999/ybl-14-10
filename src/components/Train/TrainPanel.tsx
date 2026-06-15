@@ -2,14 +2,23 @@ import useGameStore from '@/store/useGameStore';
 import CarriageCard from './CarriageCard';
 import { getTrainLoadPercentage, getTotalLoad, getTotalCapacity } from '@/engine/loadingSystem';
 import { Train as TrainIcon } from 'lucide-react';
+import { CandyType } from '@/types';
 
 export default function TrainPanel() {
-  const { train, dispatchTrain, gamePhase, isAnimating, moves } = useGameStore();
+  const { train, dispatchTrain, gamePhase, isAnimating, moves, currentStationId, lastStampCandyInfo } = useGameStore();
 
   const loadPercent = getTrainLoadPercentage(train);
   const totalLoad = getTotalLoad(train);
   const totalCapacity = getTotalCapacity(train);
   const canDispatch = totalLoad > 0 && gamePhase === 'playing' && !isAnimating;
+
+  const getCarriageStampStationId = (candyType: CandyType): string | null => {
+    const info = lastStampCandyInfo[candyType];
+    if (info && info.stampCandyCounts[currentStationId] > 0) {
+      return currentStationId;
+    }
+    return null;
+  };
 
   return (
     <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-4 shadow-lg border-2 border-amber-200">
@@ -24,7 +33,11 @@ export default function TrainPanel() {
       <div className="relative overflow-x-auto pb-2">
         <div className="flex gap-2 min-w-max">
           {train.carriages.map((carriage) => (
-            <CarriageCard key={carriage.id} carriage={carriage} />
+            <CarriageCard
+              key={carriage.id}
+              carriage={carriage}
+              stampStationId={getCarriageStampStationId(carriage.candyType)}
+            />
           ))}
         </div>
 

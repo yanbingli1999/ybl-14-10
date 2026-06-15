@@ -10,8 +10,19 @@ export function updateStampOnDispatch(
   stationId: string,
   dispatchSuccess: boolean
 ): Record<string, StationStampData> {
-  const newStamps = { ...stationStamps };
-  const current = newStamps[stationId] || createEmptyStampData();
+  const newStamps: Record<string, StationStampData> = {};
+
+  for (const key of Object.keys(stationStamps)) {
+    if (key !== stationId) {
+      const other = stationStamps[key];
+      newStamps[key] = {
+        ...other,
+        consecutiveCompletions: 0,
+      };
+    }
+  }
+
+  const current = stationStamps[stationId] || createEmptyStampData();
 
   if (dispatchSuccess) {
     const newConsecutive = current.consecutiveCompletions + 1;
@@ -19,12 +30,16 @@ export function updateStampOnDispatch(
 
     if (newConsecutive >= GAME_CONFIG.STAMP_CONSECUTIVE_THRESHOLD) {
       newStampCount += 1;
+      newStamps[stationId] = {
+        consecutiveCompletions: newConsecutive - GAME_CONFIG.STAMP_CONSECUTIVE_THRESHOLD,
+        stampCount: newStampCount,
+      };
+    } else {
+      newStamps[stationId] = {
+        consecutiveCompletions: newConsecutive,
+        stampCount: newStampCount,
+      };
     }
-
-    newStamps[stationId] = {
-      consecutiveCompletions: newConsecutive,
-      stampCount: newStampCount,
-    };
   } else {
     newStamps[stationId] = {
       ...current,
